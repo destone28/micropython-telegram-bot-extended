@@ -40,7 +40,8 @@ class TelegramBot:
 
             self.send_api_requests()
             self.read_api_response()
-            await asyncio.sleep(1)
+            sleep_time = 0.1 if len(self.outgoing) > 0 else 1.0
+            await asyncio.sleep(sleep_time)
 
     # Send HTTP requests to the server. If there are no special requests
     # to handle (like sendMessage) we just ask for updates with getUpdates.
