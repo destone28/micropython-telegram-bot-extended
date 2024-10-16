@@ -191,7 +191,15 @@ class TelegramBot:
     # Send a message via Telegram, to the specified chat_id and containing
     # the specified text. This function will just queue the item. The
     # actual sending will be performed in the main boot loop.
-    def send(self,chat_id,text):
+    #
+    # If 'glue' is True, the new text will be glued to the old pending
+    # message up to 2k, in order to reduce the API back-and-forth.
+    def send(self,chat_id,text,glue=False):
+        if glue and len(self.outgoing) > 0 and \
+           len(self.outgoing[0]["text"])+len(text)+1 < 2048:
+            self.outgoing[0]["text"] += "\n"
+            self.outgoing[0]["text"] += text
+            return
         self.outgoing = [{"chat_id":chat_id, "text":text}]+self.outgoing
 
     # This is just a utility method that can be used in order to wait
