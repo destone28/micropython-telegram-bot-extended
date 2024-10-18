@@ -13,7 +13,7 @@ class TelegramBot:
         self.rbuf = bytearray(4096)
         self.rbuf_mv = memoryview(self.rbuf)
         self.rbuf_used = 0
-        self.debug = True
+        self.debug = False
 
         # Array of outgoing messages. Each entry is a hash with
         # chat_id and text fields.
@@ -139,12 +139,34 @@ class TelegramBot:
                         if self.debug: print("New offset:",offset)
 
                         # Process the received message.
-                        msg = res['result'][0]
-                        self.callback(self,
-                            msg['message']['from']['username'],
-                            msg['message']['from']['id'],
-                            msg['message']['text'],
-                            msg)
+                        entry = res['result'][0]
+                        if "message" in entry:
+                            msg = entry['message']
+                        elif "channel_post" in entry:
+                            msg = entry['channel_post']
+
+                        # Fill the fields depending on the message
+                        msg_type = None
+                        chat_name = None
+                        sender_name = None
+                        chat_id = None
+                        text = None
+
+                        try: msg_type = msg['chat']['type']
+                        except: pass
+                        try: chat_name = msg['chat']['title']
+                        except: pass
+                        try: sender_name = msg['from']['username']
+                        except: pass
+                        try: chat_id = msg['chat']['id']
+                        except: pass
+                        try: text = msg['text']
+                        except: pass
+
+                        # We don't care about join messages and other stuff.
+                        # We report just messages with some text content.
+                        if text != None:
+                            self.callback(self,msg_type,chat_name,sender_name,chat_id,text,entry)
                     self.rbuf_used = 0
 
     # MicroPython seems to lack the urlencode module. We need very

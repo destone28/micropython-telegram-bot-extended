@@ -11,9 +11,9 @@ WifiPassword = "mysecretpassword"
 import uasyncio as asyncio
 from telegram import TelegramBot
 
-def mycallback(bot,from_username,from_id,text,msg):
-    print(from_username,from_id,text)
-    bot.send(from_id,"Ehi! "+text)
+def mycallback(bot,msg_type,chat_name,sender_name,chat_id,text,entry):
+    print(msg_type,chat_name,sender_name,chat_id,text)
+    bot.send(chat_id,"Ehi! "+text)
 
 bot = TelegramBot(Token,mycallback)
 bot.connect_wifi(WifiNetwork, WifiPassword)
