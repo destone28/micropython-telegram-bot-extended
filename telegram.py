@@ -25,6 +25,7 @@ class TelegramBot:
         self.reconnect = True # We need to reconnect the socket, either for
                               # the first time or after errors.
         self.offset = 0     # Next message ID offset.
+        self.watchdog_timeout_ms = 60000 # 60 seconds max idle time.
 
     # Stop the task handling the bot. This should be called before
     # destroying the object, in order to also terminate the task.
@@ -53,6 +54,15 @@ class TelegramBot:
 
             self.send_api_requests()
             self.read_api_response()
+
+            # Watchdog: if the connection is idle for a too long
+            # time, force a reconnection.
+            if self.pending and time.ticks_diff(time.ticks_ms(),self.pending_since) > self.watchdog_timeout_ms:
+                self.reconnect = True
+                print("[telegram] *** SOCKET WATCHDOG EXPIRED ***")
+
+            # If there are outgoing messages pending, wait less
+            # to do I/O again.
             sleep_time = 0.1 if len(self.outgoing) > 0 else 1.0
             await asyncio.sleep(sleep_time)
 
@@ -95,6 +105,7 @@ class TelegramBot:
             try:
                 self.ssl.write(request)
                 self.pending = True
+                self.pending_since = time.ticks_ms()
             except:
                 self.reconnect = True
                 self.missed_write = request
