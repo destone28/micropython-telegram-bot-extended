@@ -55,4 +55,7 @@ The arguments it receives are:
 * `text` is the content of the message. UTF-8 encoded.
 * `entry` is the raw JSON entry received from Telegram. From there you can take all the other stuff not directly passed to the function.
 
-The only method you can call is `.send()`, with the ID of the recipient and your text message. A third optional argument called **glue** can be `True` or `False`. By default it is `False`. When it is `True`, messages having the same target ID as the previous message are *glued* together, up to 2k of text, so we can avoid sending too many messages via the API.
+The only two methods you can call are:
+
+1. `.send()`, with the ID of the recipient and your text message. A third optional argument called **glue** can be `True` or `False`. By default it is `False`. When it is `True`, messages having the same target ID as the previous message are *glued* together, up to 2k of text, so we can avoid sending too many messages via the API.
+2. `.stop()` that will just terminate the task handling the bot. This should be called before discarding the `TelegramBot` object.

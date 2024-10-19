@@ -13,7 +13,10 @@ class TelegramBot:
         self.rbuf = bytearray(4096)
         self.rbuf_mv = memoryview(self.rbuf)
         self.rbuf_used = 0
+        self.active = True # So we can stop the task with .stop()
         self.debug = False
+        self.missed_write = None # Failed write payload. This is useful
+                                 # in order to retransfer after reconnection.
 
         # Array of outgoing messages. Each entry is a hash with
         # chat_id and text fields.
@@ -23,20 +26,30 @@ class TelegramBot:
                               # the first time or after errors.
         self.offset = 0     # Next message ID offset.
 
+    # Stop the task handling the bot. This should be called before
+    # destroying the object, in order to also terminate the task.
+    def stop(self):
+        self.active = False
+
     # Main telegram bot loop.
     # Sould be executed asynchronously, like with:
     # asyncio.create_task(bot.run())
     async def run(self):
-        while True:
+        while self.active:
             if self.reconnect:
+                if self.debug: print("[telegram] Reconnecting socket.")
                 # Reconnection (or first connection)
-                addr = socket.getaddrinfo("api.telegram.org", 443, socket.AF_INET)
-                addr = addr[0][-1]
-                self.socket = socket.socket(socket.AF_INET)
-                self.socket.connect(addr)
-                self.socket.setblocking(False)
-                self.ssl = ssl.wrap_socket(self.socket)
-                self.reconnect = False
+                try:
+                    addr = socket.getaddrinfo("api.telegram.org", 443, socket.AF_INET)
+                    addr = addr[0][-1]
+                    self.socket = socket.socket(socket.AF_INET)
+                    self.socket.connect(addr)
+                    self.socket.setblocking(False)
+                    self.ssl = ssl.wrap_socket(self.socket)
+                    self.reconnect = False
+                    self.pending = False
+                except:
+                    self.reconnect = True
 
             self.send_api_requests()
             self.read_api_response()
@@ -49,9 +62,15 @@ class TelegramBot:
         if self.pending: return # Request already in progress.
         request = None
 
+        # Re-issue a pending write that failed for OS error
+        # after a reconnection.
+        if self.missed_write != None:
+            request = self.missed_write
+            self.missed_write = None
+
         # Issue sendMessage requests if we have pending
         # messages to deliver.
-        if len(self.outgoing) > 0:
+        elif len(self.outgoing) > 0:
             oldest = self.outgoing.pop()
             request = self.build_post_request("sendMessage",oldest)
 
@@ -72,9 +91,13 @@ class TelegramBot:
         # this request should work without sending just part
         # of the request.
         if request != None:
-            if self.debug: print("WRITE TO SOCKET",request)
-            self.ssl.write(request)
-            self.pending = True
+            if self.debug: print("[telegram] Writing payload:",request)
+            try:
+                self.ssl.write(request)
+                self.pending = True
+            except:
+                self.reconnect = True
+                self.missed_write = request
 
     # Try to read the reply from the Telegram server. Process it
     # and if needed ivoke the callback registered by the user for
@@ -123,12 +146,12 @@ class TelegramBot:
                     self.pending = False
                     if len(res['result']) == 0:
                         # Empty result set. Try again.
-                        print("No more messages.")
+                        if self.debug: print("No more messages.")
                     elif not isinstance(res['result'],list):
                         # This is the reply to SendMessage or other
                         # non getUpdates related API calls? Discard
                         # it.
-                        print("Got reply from sendMessage")
+                        if self.debug: print("Got reply from sendMessage")
                         pass
                     else:
                         # Update the last message ID we get so we
