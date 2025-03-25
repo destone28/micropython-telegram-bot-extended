@@ -1,7 +1,15 @@
+# This project contains code with dual licensing:
+# 
+# The original micropython-telegram-bot code, created by Salvatore Sanfilippo (@antirez), 
+# is released under the BSD 2-clause license
 # Copyright (C) 2024 Salvatore Sanfilippo <antirez@gmail.com>
 # All Rights Reserved
 #
-# This code is released under the BSD 2 clause license.
+# All additional code, extensions, examples, and customizations beyond the original 
+# micropython-telegram-bot implementation are licensed under the 
+# GNU Affero General Public License v3.0 (AGPL-3.0)
+# Made by Emilio Destratis - destone28 <emilio.destratis@gmail.com>
+#
 # See the LICENSE file for more information
 
 import network, socket, ssl, time, uasyncio as asyncio, json, os, gc
